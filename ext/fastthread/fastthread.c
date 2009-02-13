@@ -10,8 +10,8 @@
  */
 
 #include <ruby.h>
-#include <intern.h>
-#include <rubysig.h>
+#include <ruby/intern.h>
+//#include <rubysig.h>
 
 static VALUE rb_cMutex;
 static VALUE rb_cConditionVariable;
@@ -343,14 +343,14 @@ rb_mutex_alloc(VALUE klass)
  * Returns +true+ if this lock is currently held by some thread.
  *
  */
-
+/*
 static VALUE
 rb_mutex_locked_p(VALUE self)
 {
     Mutex *mutex;
     Data_Get_Struct(self, Mutex, mutex);
     return RTEST(mutex->owner) ? Qtrue : Qfalse;
-}
+}*/
 
 /*
  * Document-method: try_lock
@@ -360,7 +360,7 @@ rb_mutex_locked_p(VALUE self)
  * lock was granted.
  *
  */
-
+/*
 static VALUE
 rb_mutex_try_lock(VALUE self)
 {
@@ -373,7 +373,7 @@ rb_mutex_try_lock(VALUE self)
 
     mutex->owner = rb_thread_current();
     return Qtrue;
-}
+}*/
 
 /*
  * Document-method: lock
@@ -389,18 +389,18 @@ lock_mutex(Mutex *mutex)
     VALUE current;
     current = rb_thread_current();
 
-    rb_thread_critical = 1;
+    //rb_thread_critical = 1;
 
     while (RTEST(mutex->owner)) {
         wait_list(&mutex->waiting);
-        rb_thread_critical = 1;
+        //rb_thread_critical = 1;
     }
     mutex->owner = current; 
 
-    rb_thread_critical = 0;
+    //rb_thread_critical = 0;
     return Qnil;
 }
-
+/*
 static VALUE
 rb_mutex_lock(VALUE self)
 {
@@ -408,7 +408,7 @@ rb_mutex_lock(VALUE self)
     Data_Get_Struct(self, Mutex, mutex);
     lock_mutex(mutex);
     return self;
-}
+}*/
 
 /*
  * Document-method: unlock
@@ -435,7 +435,7 @@ unlock_mutex_inner(Mutex *mutex)
 static VALUE
 set_critical(VALUE value)
 {
-    rb_thread_critical = (int)value;
+    //rb_thread_critical = (int)value;
     return Qundef;
 }
 
@@ -444,7 +444,7 @@ unlock_mutex(Mutex *mutex)
 {
     VALUE waking;
 
-    rb_thread_critical = 1;
+    //rb_thread_critical = 1;
     waking = rb_ensure(unlock_mutex_inner, (VALUE)mutex, set_critical, 0);
 
     if (waking == Qundef) {
@@ -457,7 +457,7 @@ unlock_mutex(Mutex *mutex)
 
     return Qtrue;
 }
-
+/*
 static VALUE
 rb_mutex_unlock(VALUE self)
 {
@@ -469,7 +469,7 @@ rb_mutex_unlock(VALUE self)
     } else {
         return Qnil;
     }
-}
+}*/
 
 /*
  * Document-method: exclusive_unlock
@@ -496,7 +496,7 @@ rb_mutex_exclusive_unlock(VALUE self)
     VALUE waking;
     Data_Get_Struct(self, Mutex, mutex);
 
-    rb_thread_critical = 1;
+    //rb_thread_critical = 1;
     waking = rb_ensure(rb_mutex_exclusive_unlock_inner, (VALUE)mutex, set_critical, 0);
 
     if (waking == Qundef) {
@@ -518,13 +518,13 @@ rb_mutex_exclusive_unlock(VALUE self)
  * completes.  See the example under Mutex.
  *
  */
-
+/*
 static VALUE
 rb_mutex_synchronize(VALUE self)
 {
     rb_mutex_lock(self);
     return rb_ensure(rb_yield, Qundef, rb_mutex_unlock, self);
-}
+}*/
 
 /*
  * Document-class: ConditionVariable
@@ -617,9 +617,9 @@ rb_condvar_alloc(VALUE klass)
 static void
 wait_condvar(ConditionVariable *condvar, Mutex *mutex)
 {
-    rb_thread_critical = 1;
+    //rb_thread_critical = 1;
     if (rb_thread_current() != mutex->owner) {
-        rb_thread_critical = 0;
+        //rb_thread_critical = 0;
         rb_raise(private_eThreadError, "not owner of the synchronization mutex");
     }
     unlock_mutex_inner(mutex);
@@ -681,7 +681,7 @@ rb_condvar_broadcast(VALUE self)
 
     Data_Get_Struct(self, ConditionVariable, condvar);
   
-    rb_thread_critical = 1;
+    //rb_thread_critical = 1;
     rb_ensure(wake_all, (VALUE)&condvar->waiting, set_critical, 0);
     rb_thread_schedule();
 
@@ -700,7 +700,7 @@ static void
 signal_condvar(ConditionVariable *condvar)
 {
     VALUE waking;
-    rb_thread_critical = 1;
+    //rb_thread_critical = 1;
     waking = rb_ensure(wake_one, (VALUE)&condvar->waiting, set_critical, 0);
     if (RTEST(waking)) {
         run_thread(waking);
@@ -821,11 +821,11 @@ rb_queue_marshal_load(VALUE self, VALUE data)
     if (TYPE(array) != T_ARRAY) {
         rb_raise(rb_eRuntimeError, "expected Array of queue data");
     }
-    if (RARRAY(array)->len < 1) {
+    if (RARRAY_LEN(array) < 1) {
         rb_raise(rb_eRuntimeError, "missing capacity value");
     }
     queue->capacity = NUM2ULONG(rb_ary_shift(array));
-    push_multiple_list(&queue->values, RARRAY(array)->ptr, (unsigned)RARRAY(array)->len);
+    push_multiple_list(&queue->values, RARRAY_PTR(array), (unsigned)RARRAY_LEN(array));
 
     return self;
 }
@@ -1179,8 +1179,8 @@ Init_fastthread()
     private_eThreadError = rb_const_get(rb_cObject, rb_intern("ThreadError"));
 
     /* ensure that classes get replaced atomically */
-    saved_critical = rb_thread_critical;
-    rb_thread_critical = 1;
-    rb_ensure(setup_classes, Qnil, set_critical, (VALUE)saved_critical);
+    //saved_critical = rb_thread_critical;
+    //rb_thread_critical = 1;
+    //rb_ensure(setup_classes, Qnil, set_critical, (VALUE)saved_critical);
 }
 
